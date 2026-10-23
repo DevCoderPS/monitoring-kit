@@ -1,0 +1,9 @@
+# GENERATED INPUT: scripts/up က .env အတိုင်း @@...@@ နေရာတွေကို ဖြည့်ပြီး .generated/prometheus/scrape.d/ ထဲ ထည့်ပေးတယ်
+# postgres-exporter container (Postgres ကို ချိတ်ပြီး ကိန်းဂဏန်းထုတ်ပေးတာ) ကို ၁၅ စက္ကန့်တစ်ခါ သွားမေးမယ့် job
+scrape_configs:
+  - job_name: postgres
+    static_configs:
+      - targets: ['postgres-exporter:9187']
+        labels:
+          env: '@@MONITORING_ENV@@'
+          host: '@@MONITORING_HOST@@'

@@ -1,0 +1,8 @@
+.env
+.env.*
+!.env.example
+logs/*
+!logs/.gitkeep
+.generated/
+Thumbs.db
+.DS_Store

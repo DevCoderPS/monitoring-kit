@@ -1,0 +1,207 @@
+# =====================================================================
+#  Alert rules (Postgres)  -  POSTGRES_ENABLE=true ဆိုမှ တင်မယ်
+#  ပြင်ချင်ရင် ဒီဖိုင်ကိုပြင်ပြီး scripts/up ပြန် run (Grafana ကို အလိုအလျောက် restart လုပ်ပေးမယ်)
+# =====================================================================
+apiVersion: 1
+groups:
+  - orgId: 1
+    name: dtm-postgres
+    folder: Monitoring
+    interval: 1m
+    rules:
+      - uid: dtm-pg-down
+        title: Postgres down
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: dtm-prometheus
+            model:
+              refId: A
+              expr: 'max(pg_up) or vector(0)'
+              instant: true
+              range: false
+              intervalMs: 1000
+              maxDataPoints: 43200
+              editorMode: code
+          - refId: B
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              refId: B
+              type: reduce
+              expression: A
+              reducer: last
+              settings:
+                mode: dropNN
+          - refId: C
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              refId: C
+              type: threshold
+              expression: B
+              conditions:
+                - evaluator:
+                    type: lt
+                    params: [1]
+        noDataState: Alerting
+        execErrState: Error
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: Postgres ကို ၂ မိနစ်ကျော် ချိတ်မရဘူး (database ကျနေတာ ဒါမှမဟုတ် monitor user/password မှား)
+      - uid: dtm-pg-connections
+        title: Postgres connections high
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: dtm-prometheus
+            model:
+              refId: A
+              expr: 'sum(pg_stat_activity_count) / max(pg_settings_max_connections) * 100'
+              instant: true
+              range: false
+              intervalMs: 1000
+              maxDataPoints: 43200
+              editorMode: code
+          - refId: B
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              refId: B
+              type: reduce
+              expression: A
+              reducer: last
+              settings:
+                mode: dropNN
+          - refId: C
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              refId: C
+              type: threshold
+              expression: B
+              conditions:
+                - evaluator:
+                    type: gt
+                    params: [80]
+        noDataState: OK
+        execErrState: Error
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: Postgres connection က max_connections ရဲ့ ၈၀% ကျော်နေတယ် (၅ မိနစ်)
+      - uid: dtm-pg-deadlocks
+        title: Postgres deadlock
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: dtm-prometheus
+            model:
+              refId: A
+              expr: 'sum(increase(pg_stat_database_deadlocks[10m]))'
+              instant: true
+              range: false
+              intervalMs: 1000
+              maxDataPoints: 43200
+              editorMode: code
+          - refId: B
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              refId: B
+              type: reduce
+              expression: A
+              reducer: last
+              settings:
+                mode: dropNN
+          - refId: C
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              refId: C
+              type: threshold
+              expression: B
+              conditions:
+                - evaluator:
+                    type: gt
+                    params: [0]
+        noDataState: OK
+        execErrState: Error
+        for: 0s
+        labels:
+          severity: warning
+        annotations:
+          summary: လွန်ခဲ့တဲ့ ၁၀ မိနစ်အတွင်း deadlock ဖြစ်ခဲ့တယ်
+      - uid: dtm-pg-longtx
+        title: Postgres long transaction
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: dtm-prometheus
+            model:
+              refId: A
+              expr: 'max(pg_stat_activity_max_tx_duration)'
+              instant: true
+              range: false
+              intervalMs: 1000
+              maxDataPoints: 43200
+              editorMode: code
+          - refId: B
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              refId: B
+              type: reduce
+              expression: A
+              reducer: last
+              settings:
+                mode: dropNN
+          - refId: C
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              refId: C
+              type: threshold
+              expression: B
+              conditions:
+                - evaluator:
+                    type: gt
+                    params: [600]
+        noDataState: OK
+        execErrState: Error
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: Transaction တစ်ခု ၁၀ မိနစ်ကျော် ပွင့်နေတယ် (lock/vacuum ပိတ်နိုင်)

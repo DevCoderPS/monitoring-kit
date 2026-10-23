@@ -1,0 +1,257 @@
+{
+ "title": "Uptime",
+ "uid": "dtm-uptime",
+ "schemaVersion": 39,
+ "version": 1,
+ "tags": [
+  "uptime",
+  "blackbox"
+ ],
+ "time": {
+  "from": "now-6h",
+  "to": "now"
+ },
+ "refresh": "30s",
+ "editable": true,
+ "panels": [
+  {
+   "id": 1,
+   "type": "stat",
+   "title": "URL status (UP / DOWN)",
+   "gridPos": {
+    "x": 0,
+    "y": 0,
+    "w": 14,
+    "h": 5
+   },
+   "datasource": {
+    "type": "prometheus",
+    "uid": "dtm-prometheus"
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "probe_success{job=\"uptime\"}",
+     "datasource": {
+      "type": "prometheus",
+      "uid": "dtm-prometheus"
+     },
+     "legendFormat": "{{instance}}",
+     "instant": true
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "mappings": [
+      {
+       "type": "value",
+       "options": {
+        "0": {
+         "text": "DOWN",
+         "color": "red"
+        },
+        "1": {
+         "text": "UP",
+         "color": "green"
+        }
+       }
+      }
+     ],
+     "thresholds": {
+      "mode": "absolute",
+      "steps": [
+       {
+        "color": "red",
+        "value": null
+       },
+       {
+        "color": "green",
+        "value": 1
+       }
+      ]
+     }
+    },
+    "overrides": []
+   },
+   "options": {
+    "colorMode": "background",
+    "textMode": "value_and_name"
+   }
+  },
+  {
+   "id": 2,
+   "type": "stat",
+   "title": "Uptime (last 24h)",
+   "gridPos": {
+    "x": 14,
+    "y": 0,
+    "w": 10,
+    "h": 5
+   },
+   "datasource": {
+    "type": "prometheus",
+    "uid": "dtm-prometheus"
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "avg_over_time(probe_success{job=\"uptime\"}[24h]) * 100",
+     "datasource": {
+      "type": "prometheus",
+      "uid": "dtm-prometheus"
+     },
+     "legendFormat": "{{instance}}",
+     "instant": true
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "unit": "percent",
+     "decimals": 2,
+     "min": 0,
+     "max": 100,
+     "thresholds": {
+      "mode": "absolute",
+      "steps": [
+       {
+        "color": "red",
+        "value": null
+       },
+       {
+        "color": "orange",
+        "value": 99
+       },
+       {
+        "color": "green",
+        "value": 99.9
+       }
+      ]
+     }
+    },
+    "overrides": []
+   },
+   "options": {
+    "textMode": "value_and_name"
+   }
+  },
+  {
+   "id": 3,
+   "type": "timeseries",
+   "title": "Response time",
+   "gridPos": {
+    "x": 0,
+    "y": 5,
+    "w": 12,
+    "h": 8
+   },
+   "datasource": {
+    "type": "prometheus",
+    "uid": "dtm-prometheus"
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "probe_duration_seconds{job=\"uptime\"}",
+     "datasource": {
+      "type": "prometheus",
+      "uid": "dtm-prometheus"
+     },
+     "legendFormat": "{{instance}}"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "unit": "s"
+    },
+    "overrides": []
+   }
+  },
+  {
+   "id": 4,
+   "type": "timeseries",
+   "title": "HTTP status code",
+   "gridPos": {
+    "x": 12,
+    "y": 5,
+    "w": 12,
+    "h": 8
+   },
+   "datasource": {
+    "type": "prometheus",
+    "uid": "dtm-prometheus"
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "probe_http_status_code{job=\"uptime\"}",
+     "datasource": {
+      "type": "prometheus",
+      "uid": "dtm-prometheus"
+     },
+     "legendFormat": "{{instance}}"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "unit": "none",
+     "decimals": 0
+    },
+    "overrides": []
+   }
+  },
+  {
+   "id": 5,
+   "type": "stat",
+   "title": "HTTPS certificate - days left",
+   "gridPos": {
+    "x": 0,
+    "y": 13,
+    "w": 24,
+    "h": 5
+   },
+   "datasource": {
+    "type": "prometheus",
+    "uid": "dtm-prometheus"
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "((probe_ssl_earliest_cert_expiry{job=\"uptime\"} - time()) / 86400) and (probe_ssl_earliest_cert_expiry{job=\"uptime\"} > 0)",
+     "datasource": {
+      "type": "prometheus",
+      "uid": "dtm-prometheus"
+     },
+     "legendFormat": "{{instance}}",
+     "instant": true
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "unit": "d",
+     "decimals": 0,
+     "thresholds": {
+      "mode": "absolute",
+      "steps": [
+       {
+        "color": "red",
+        "value": null
+       },
+       {
+        "color": "orange",
+        "value": 14
+       },
+       {
+        "color": "green",
+        "value": 30
+       }
+      ]
+     }
+    },
+    "overrides": []
+   },
+   "options": {
+    "textMode": "value_and_name"
+   }
+  }
+ ]
+}

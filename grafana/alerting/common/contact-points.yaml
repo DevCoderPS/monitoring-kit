@@ -1,0 +1,17 @@
+# =====================================================================
+#  Contact point  =  Alert ဖြစ်ရင် ဘယ်ကိုပို့မလဲ
+#  email လိပ်စာကို  .env ထဲက  ALERT_EMAIL  ကနေ ယူတယ်
+#  (တစ်ခုထက်ပိုရင် ကော်မာနဲ့ ခွဲရေး :  a@x.com,b@y.com )
+# =====================================================================
+apiVersion: 1
+contactPoints:
+  - orgId: 1
+    name: email-alerts
+    receivers:
+      - uid: email-alerts-1
+        type: email
+        settings:
+          addresses: ${ALERT_EMAIL}
+          singleEmail: false
+          subject: '{{ template "dtm.email.subject" . }}'    #tpl
+          message: '{{ template "dtm.email.message" . }}'    #tpl

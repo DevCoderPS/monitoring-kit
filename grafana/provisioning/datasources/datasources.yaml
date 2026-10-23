@@ -1,0 +1,21 @@
+# =====================================================================
+#  Grafana ကို Prometheus နဲ့ Loki ကို အလိုအလျောက် ချိတ်ပေးတဲ့ဖိုင်
+#  (ကိုယ်တိုင် UI ထဲမှာ Add data source လုပ်စရာ မလိုတော့ဘူး)
+#  uid ကို ပုံသေ ပေးထားတာက dashboard/alert ဖိုင်တွေက ကိုးကားဖို့
+# =====================================================================
+apiVersion: 1
+datasources:
+  - name: Prometheus
+    uid: dtm-prometheus
+    type: prometheus
+    access: proxy
+    url: http://prometheus:9090     # container နာမည်နဲ့ ချိတ်
+    isDefault: true
+    editable: false
+
+  - name: Loki
+    uid: dtm-loki
+    type: loki
+    access: proxy
+    url: http://loki:3100
+    editable: false

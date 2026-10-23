@@ -1,0 +1,30 @@
+# =====================================================================
+#  Prometheus (LINUX ပုံစံ)  -  .env မှာ PLATFORM=linux ဆိုရင် ဒီဖိုင်ကို သုံးမယ်
+#  "scrape" = ၁၅ စက္ကန့်တစ်ခါ target ဆီ သွားမေးပြီး လက်ရှိတန်ဖိုးတွေ ယူတာ
+# =====================================================================
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+# scripts/up က ထုတ်ပေးတဲ့ optional job တွေ (ဥပမာ APP_METRICS_ENABLE=true ဆိုရင် dtm-app job) ကို ဒီ folder ကနေ ဖတ်တယ်
+scrape_config_files:
+  - /etc/prometheus/scrape.d/*.yml
+
+scrape_configs:
+
+  # Prometheus ကိုယ်တိုင်ရဲ့ အခြေအနေ
+  - job_name: prometheus
+    static_configs:
+      - targets: ['localhost:9090']
+
+  # ---- Linux server ရဲ့ CPU/RAM/Disk/Network  (node_exporter ကနေ ယူ) ----
+  # node_exporter ကို server ပေါ်မှာ systemd service အဖြစ် install ထားရမယ်
+  # (scripts/install-node-exporter.sh ကို sudo နဲ့ run ပါ)
+  # host.docker.internal = Docker container ထဲကနေ Linux host ကို ခေါ်တဲ့ နာမည်
+  #                        (compose.yaml ထဲက extra_hosts နဲ့ ဖြစ်လာတာ)
+  - job_name: linux
+    static_configs:
+      - targets: ['host.docker.internal:9100']
+        labels:
+          env: prod           # ကိုယ့်ပတ်ဝန်းကျင်အတိုင်း ပြင် (stag / prod)
+          host: my-server     # ကိုယ့် server နာမည်နဲ့ ပြင်

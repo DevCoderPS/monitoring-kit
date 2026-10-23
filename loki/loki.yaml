@@ -1,0 +1,44 @@
+# =====================================================================
+#  Loki  -  Log သိမ်းတဲ့ database ရဲ့ setting
+#  (စက်တစ်လုံးတည်း၊ ဖိုင်စနစ်ပေါ် သိမ်းတဲ့ ရိုးရှင်းတဲ့ပုံစံ)
+# =====================================================================
+auth_enabled: false            # login မလို (container network ထဲက ပဲ ချိတ်လို့ရလို့)
+
+server:
+  http_listen_port: 3100
+
+common:
+  instance_addr: 127.0.0.1
+  path_prefix: /loki
+  storage:
+    filesystem:
+      chunks_directory: /loki/chunks
+      rules_directory: /loki/rules
+  replication_factor: 1
+  ring:
+    kvstore:
+      store: inmemory
+
+schema_config:
+  configs:
+    - from: 2024-01-01
+      store: tsdb
+      object_store: filesystem
+      schema: v13
+      index:
+        prefix: index_
+        period: 24h
+
+# ---- Log ကို ရက်ပေါင်းများစွာ ကြာရင် အလိုအလျောက် ဖျက် ----
+compactor:
+  working_directory: /loki/compactor
+  retention_enabled: true
+  delete_request_store: filesystem
+  retention_delete_delay: 2h
+
+limits_config:
+  retention_period: 720h          # ၇၂၀ နာရီ = ရက် ၃၀
+  allow_structured_metadata: false
+  # Loki က service label ကနေ service_name ဆိုတဲ့ label အပို ကိုယ့်ဘာသာ ထည့်တတ်တယ်။
+  # label အပိုမလိုလို့ ပိတ်ထားတယ်။
+  discover_service_name: []

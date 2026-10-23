@@ -1,0 +1,18 @@
+# =====================================================================
+#  Telegram contact point  =  Alert ဖြစ်ရင် Telegram Bot နဲ့ chat/group ထဲ စာပို့
+#  .env ထဲက  TELEGRAM_BOT_TOKEN  နဲ့  TELEGRAM_CHAT_ID  ကို သုံးတယ်
+#  (TELEGRAM_ALERT_ENABLE=true ဆိုမှ scripts/up က ဒီဖိုင်ကို တင်ပေးတယ်)
+# =====================================================================
+apiVersion: 1
+contactPoints:
+  - orgId: 1
+    name: telegram-alerts
+    receivers:
+      - uid: telegram-alerts-1
+        type: telegram
+        settings:
+          bottoken: ${TELEGRAM_BOT_TOKEN}
+          chatid: "@@TELEGRAM_CHAT_ID@@"   # up script က .env ထဲက TELEGRAM_CHAT_ID ကို ဒီနေရာ တိုက်ရိုက်ထည့်ပေးတယ်
+                                           # (Grafana က ${...} ကို နံပါတ်အဖြစ်ပြောင်းလို့ chatid ကို env နဲ့ မပေးရ)
+          parse_mode: HTML    #tpl
+          message: '{{ template "dtm.telegram" . }}'    #tpl

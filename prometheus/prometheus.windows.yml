@@ -1,0 +1,31 @@
+# =====================================================================
+#  Prometheus (WINDOWS ပုံစံ)  -  ဘယ်ကိုကြည့်ပြီး ကိန်းဂဏန်းတွေ ကောက်မလဲ သတ်မှတ်တဲ့ဖိုင်
+#  "scrape" = ၁၅ စက္ကန့်တစ်ခါ target ဆီ သွားမေးပြီး လက်ရှိတန်ဖိုးတွေ ယူတာ
+# =====================================================================
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+# scripts/up က ထုတ်ပေးတဲ့ optional job တွေ (ဥပမာ APP_METRICS_ENABLE=true ဆိုရင် dtm-app job) ကို ဒီ folder ကနေ ဖတ်တယ်
+scrape_config_files:
+  - /etc/prometheus/scrape.d/*.yml
+
+scrape_configs:
+
+  # Prometheus ကိုယ်တိုင်ရဲ့ အခြေအနေ
+  - job_name: prometheus
+    static_configs:
+      - targets: ['localhost:9090']
+
+  # ---- Windows စက်ရဲ့ CPU/RAM/Disk/Network  (windows_exporter ကနေ ယူ) ----
+  # windows_exporter ကို Windows ပေါ်မှာ သီးသန့် install လုပ်ထားရမယ်
+  # (scripts/install-windows-exporter.ps1 ကို Admin PowerShell မှာ run ပါ)
+  # host.docker.internal = Docker container ထဲကနေ Windows စက်ကို ခေါ်တဲ့ နာမည်
+  - job_name: windows
+    static_configs:
+      - targets: ['host.docker.internal:9182']
+        labels:
+          env: dev
+          host: my-pc
+
+  # Linux server အတွက်ဆိုရင် .env မှာ PLATFORM=linux လို့ ပြောင်းပါ (prometheus.linux.yml ကို သုံးမယ်)

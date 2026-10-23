@@ -1,0 +1,7 @@
+# Shell scripts must keep LF line endings (CRLF breaks them on Linux)
+* text=auto
+*.sh text eol=lf
+*.ps1 text eol=crlf
+*.yml text eol=lf
+*.yaml text eol=lf
+*.alloy text eol=lf

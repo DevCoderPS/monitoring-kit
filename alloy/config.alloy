@@ -1,0 +1,68 @@
+// =====================================================================
+//  Alloy  -  Log ဖိုင်တွေကို ဖတ်ပြီး Loki ဆီ ပို့ပေးတဲ့ စုဆောင်းသူ
+//
+//  ဘယ်လိုအလုပ်လုပ်လဲ :
+//    1) /var/log/app ထဲက  *.log  ဖိုင်တွေကို ရှာ  (LOG_DIR ကို ဒီနေရာမှာ ချိတ်ထားတာ)
+//    2) ဖိုင်နာမည်ကို service label အဖြစ် သုံး
+//         ဥပမာ  e-services.log  ->  service="e-services"
+//    3) JSON log ထဲက  log.level  ကို ဖတ်ပြီး level label (INFO/WARN/ERROR) လုပ်
+//    4) Loki ဆီပို့
+//
+//  Label ကို  env / host / service / level  ၄ ခုပဲ ထားတယ်။
+//  user id, request id တွေကို label မလုပ်ပါနဲ့ (Loki နှေးပြီး နေရာကုန်လို့)။
+//  .gz ဖိုင် (ဟောင်းသွားတဲ့ log) ကို မဖတ်ဘူး  ->  *.log ပဲ ဖတ်လို့
+// =====================================================================
+
+// 1) ဖိုင်ရှာ
+local.file_match "app" {
+  path_targets = [{
+    __path__ = "/var/log/app/*.log",
+    env      = sys.env("MONITORING_ENV"),
+    host     = sys.env("MONITORING_HOST"),
+  }]
+  sync_period = "10s"
+}
+
+// 2) ဖိုင်နာမည်ကနေ service label ထုတ်
+discovery.relabel "app" {
+  targets = local.file_match.app.targets
+
+  rule {
+    source_labels = ["__path__"]
+    regex         = ".*/([^/]+)\\.log"
+    target_label  = "service"
+    replacement   = "$1"
+  }
+}
+
+// ဖိုင်ကို ဖတ်ပြီး process ကို ပို့
+loki.source.file "app" {
+  targets       = discovery.relabel.app.output
+  forward_to    = [loki.process.app.receiver]
+  tail_from_end = false   // ပထမဆုံးအကြိမ် ဖိုင်ထဲမှာ ရှိပြီးသားကိုပါ ဖတ်
+}
+
+// 3) level ထုတ် + label ရွေး
+loki.process "app" {
+  // ECS JSON ပုံစံ  {"log.level":"INFO", ...}  ကနေ level ကို ယူ
+  stage.json {
+    expressions = {
+      level = "\"log.level\"",
+    }
+  }
+  stage.labels {
+    values = { level = "" }
+  }
+  // ကျန်တဲ့ label (filename စတာ) ကို ဖယ်
+  stage.label_keep {
+    values = ["env", "host", "service", "level"]
+  }
+  forward_to = [loki.write.local.receiver]
+}
+
+// 4) Loki ဆီ ပို့
+loki.write "local" {
+  endpoint {
+    url = "http://loki:3100/loki/api/v1/push"
+  }
+}

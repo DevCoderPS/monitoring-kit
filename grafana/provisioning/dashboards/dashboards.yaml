@@ -1,0 +1,13 @@
+# =====================================================================
+#  grafana/dashboards folder ထဲက .json ဖိုင်တွေကို Dashboard အဖြစ်
+#  အလိုအလျောက် ဖွင့်ပေးတဲ့ setting
+# =====================================================================
+apiVersion: 1
+providers:
+  - name: Monitoring
+    folder: Monitoring
+    type: file
+    disableDeletion: false
+    allowUiUpdates: true      # UI ထဲမှာ ပြင်ကြည့်လို့ရ (ပြင်တာက restart မှာ ဖိုင်အတိုင်း ပြန်ဖြစ်မယ်)
+    options:
+      path: /var/lib/grafana/dashboards

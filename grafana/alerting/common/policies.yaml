@@ -1,0 +1,19 @@
+# =====================================================================
+#  Notification policy  =  Alert တွေကို ဘယ်လို စုပြီး ဘယ်လောက်ကြာကြာ တစ်ခါပို့မလဲ
+#    group_wait      30s : alert ပေါ်ပြီး ၃၀ စက္ကန့် စောင့်ပြီးမှ ပို့ (တစ်ပြိုင်နက်ပေါ်တာတွေ စုပို့ဖို့)
+#    group_interval  5m  : အုပ်စုထဲ alert အသစ်ထပ်ပေါ်ရင် ၅ မိနစ်တစ်ခါ ပို့
+#    repeat_interval 4h  : မဖြေရှင်းသေးရင် ၄ နာရီတစ်ခါ ပြန်သတိပေး
+#
+#  မှတ်ချက်: ဒီဖိုင်ကို Grafana က တိုက်ရိုက်မဖတ်တော့ပါ။ scripts/up က
+#  group_* / repeat_interval လိုင်းတွေကိုပဲ ဒီကနေယူပြီး  .generated/alerting/policies.yaml  ကို ထုတ်ပေးတယ်။
+#  (receiver ကိုတော့ .env ရဲ့ *_ALERT_ENABLE အတိုင်း script က ရွေးတယ်)
+#  အချိန်တွေ ပြင်ချင်ရင် ဒီမှာ ပြင်ပြီး up script ကို ပြန် run ပါ။
+# =====================================================================
+apiVersion: 1
+policies:
+  - orgId: 1
+    receiver: email-alerts
+    group_by: ['grafana_folder', 'alertname']
+    group_wait: 30s
+    group_interval: 5m
+    repeat_interval: 4h

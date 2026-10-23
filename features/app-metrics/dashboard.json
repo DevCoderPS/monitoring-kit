@@ -1,0 +1,493 @@
+{
+ "title": "DTM App Metrics",
+ "uid": "dtm-app-metrics",
+ "schemaVersion": 39,
+ "version": 1,
+ "tags": [
+  "app",
+  "spring-boot"
+ ],
+ "time": {
+  "from": "now-1h",
+  "to": "now"
+ },
+ "refresh": "30s",
+ "editable": true,
+ "panels": [
+  {
+   "id": 1,
+   "type": "stat",
+   "title": "App up",
+   "gridPos": {
+    "x": 0,
+    "y": 0,
+    "w": 4,
+    "h": 4
+   },
+   "datasource": {
+    "type": "prometheus",
+    "uid": "dtm-prometheus"
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "max(up{job=\"dtm-app\"}) or vector(0)",
+     "datasource": {
+      "type": "prometheus",
+      "uid": "dtm-prometheus"
+     },
+     "instant": true
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "mappings": [
+      {
+       "type": "value",
+       "options": {
+        "0": {
+         "text": "DOWN",
+         "color": "red"
+        },
+        "1": {
+         "text": "UP",
+         "color": "green"
+        }
+       }
+      }
+     ],
+     "thresholds": {
+      "mode": "absolute",
+      "steps": [
+       {
+        "color": "red",
+        "value": null
+       },
+       {
+        "color": "green",
+        "value": 1
+       }
+      ]
+     }
+    },
+    "overrides": []
+   },
+   "options": {
+    "colorMode": "background"
+   }
+  },
+  {
+   "id": 2,
+   "type": "stat",
+   "title": "Requests / minute",
+   "gridPos": {
+    "x": 4,
+    "y": 0,
+    "w": 5,
+    "h": 4
+   },
+   "datasource": {
+    "type": "prometheus",
+    "uid": "dtm-prometheus"
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "sum(rate(http_server_requests_seconds_count[5m])) * 60",
+     "datasource": {
+      "type": "prometheus",
+      "uid": "dtm-prometheus"
+     },
+     "instant": true
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "unit": "short"
+    },
+    "overrides": []
+   }
+  },
+  {
+   "id": 3,
+   "type": "stat",
+   "title": "5xx errors (selected range)",
+   "gridPos": {
+    "x": 9,
+    "y": 0,
+    "w": 5,
+    "h": 4
+   },
+   "datasource": {
+    "type": "prometheus",
+    "uid": "dtm-prometheus"
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "sum(increase(http_server_requests_seconds_count{status=~\"5..\"}[$__range])) or vector(0)",
+     "datasource": {
+      "type": "prometheus",
+      "uid": "dtm-prometheus"
+     },
+     "instant": true
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "thresholds": {
+      "mode": "absolute",
+      "steps": [
+       {
+        "color": "green",
+        "value": null
+       },
+       {
+        "color": "red",
+        "value": 1
+       }
+      ]
+     }
+    },
+    "overrides": []
+   },
+   "options": {
+    "colorMode": "background"
+   }
+  },
+  {
+   "id": 4,
+   "type": "stat",
+   "title": "Process CPU %",
+   "gridPos": {
+    "x": 14,
+    "y": 0,
+    "w": 5,
+    "h": 4
+   },
+   "datasource": {
+    "type": "prometheus",
+    "uid": "dtm-prometheus"
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "max(process_cpu_usage) * 100",
+     "datasource": {
+      "type": "prometheus",
+      "uid": "dtm-prometheus"
+     },
+     "instant": true
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "unit": "percent",
+     "max": 100,
+     "min": 0
+    },
+    "overrides": []
+   }
+  },
+  {
+   "id": 5,
+   "type": "stat",
+   "title": "DB pool used %",
+   "gridPos": {
+    "x": 19,
+    "y": 0,
+    "w": 5,
+    "h": 4
+   },
+   "datasource": {
+    "type": "prometheus",
+    "uid": "dtm-prometheus"
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "max(hikaricp_connections_active / hikaricp_connections_max * 100)",
+     "datasource": {
+      "type": "prometheus",
+      "uid": "dtm-prometheus"
+     },
+     "instant": true
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "unit": "percent",
+     "max": 100,
+     "min": 0,
+     "thresholds": {
+      "mode": "absolute",
+      "steps": [
+       {
+        "color": "green",
+        "value": null
+       },
+       {
+        "color": "orange",
+        "value": 70
+       },
+       {
+        "color": "red",
+        "value": 90
+       }
+      ]
+     }
+    },
+    "overrides": []
+   },
+   "options": {
+    "colorMode": "background"
+   }
+  },
+  {
+   "id": 6,
+   "type": "timeseries",
+   "title": "Requests per second (by outcome)",
+   "gridPos": {
+    "x": 0,
+    "y": 4,
+    "w": 12,
+    "h": 8
+   },
+   "datasource": {
+    "type": "prometheus",
+    "uid": "dtm-prometheus"
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "sum by (outcome) (rate(http_server_requests_seconds_count[1m]))",
+     "datasource": {
+      "type": "prometheus",
+      "uid": "dtm-prometheus"
+     },
+     "legendFormat": "{{outcome}}"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "unit": "reqps"
+    },
+    "overrides": []
+   }
+  },
+  {
+   "id": 7,
+   "type": "timeseries",
+   "title": "Response time (seconds)",
+   "gridPos": {
+    "x": 12,
+    "y": 4,
+    "w": 12,
+    "h": 8
+   },
+   "datasource": {
+    "type": "prometheus",
+    "uid": "dtm-prometheus"
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "sum(rate(http_server_requests_seconds_sum[1m])) / sum(rate(http_server_requests_seconds_count[1m]))",
+     "datasource": {
+      "type": "prometheus",
+      "uid": "dtm-prometheus"
+     },
+     "legendFormat": "average"
+    },
+    {
+     "refId": "B",
+     "expr": "max(http_server_requests_seconds_max)",
+     "datasource": {
+      "type": "prometheus",
+      "uid": "dtm-prometheus"
+     },
+     "legendFormat": "max (recent)"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "unit": "s"
+    },
+    "overrides": []
+   }
+  },
+  {
+   "id": 8,
+   "type": "timeseries",
+   "title": "Slowest endpoints (avg seconds, top 5)",
+   "gridPos": {
+    "x": 0,
+    "y": 12,
+    "w": 12,
+    "h": 8
+   },
+   "datasource": {
+    "type": "prometheus",
+    "uid": "dtm-prometheus"
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "topk(5, sum by (uri) (rate(http_server_requests_seconds_sum[5m])) / sum by (uri) (rate(http_server_requests_seconds_count[5m])))",
+     "datasource": {
+      "type": "prometheus",
+      "uid": "dtm-prometheus"
+     },
+     "legendFormat": "{{uri}}"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "unit": "s"
+    },
+    "overrides": []
+   }
+  },
+  {
+   "id": 9,
+   "type": "timeseries",
+   "title": "JVM heap (bytes)",
+   "gridPos": {
+    "x": 12,
+    "y": 12,
+    "w": 12,
+    "h": 8
+   },
+   "datasource": {
+    "type": "prometheus",
+    "uid": "dtm-prometheus"
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "sum(jvm_memory_used_bytes{area=\"heap\"})",
+     "datasource": {
+      "type": "prometheus",
+      "uid": "dtm-prometheus"
+     },
+     "legendFormat": "used"
+    },
+    {
+     "refId": "B",
+     "expr": "sum(jvm_memory_max_bytes{area=\"heap\"})",
+     "datasource": {
+      "type": "prometheus",
+      "uid": "dtm-prometheus"
+     },
+     "legendFormat": "max"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "unit": "bytes"
+    },
+    "overrides": []
+   }
+  },
+  {
+   "id": 10,
+   "type": "timeseries",
+   "title": "DB connections (Hikari)",
+   "gridPos": {
+    "x": 0,
+    "y": 20,
+    "w": 12,
+    "h": 8
+   },
+   "datasource": {
+    "type": "prometheus",
+    "uid": "dtm-prometheus"
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "sum(hikaricp_connections_active)",
+     "datasource": {
+      "type": "prometheus",
+      "uid": "dtm-prometheus"
+     },
+     "legendFormat": "active"
+    },
+    {
+     "refId": "B",
+     "expr": "sum(hikaricp_connections_idle)",
+     "datasource": {
+      "type": "prometheus",
+      "uid": "dtm-prometheus"
+     },
+     "legendFormat": "idle"
+    },
+    {
+     "refId": "C",
+     "expr": "sum(hikaricp_connections_pending)",
+     "datasource": {
+      "type": "prometheus",
+      "uid": "dtm-prometheus"
+     },
+     "legendFormat": "waiting"
+    },
+    {
+     "refId": "D",
+     "expr": "max(hikaricp_connections_max)",
+     "datasource": {
+      "type": "prometheus",
+      "uid": "dtm-prometheus"
+     },
+     "legendFormat": "max"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "unit": "short"
+    },
+    "overrides": []
+   }
+  },
+  {
+   "id": 11,
+   "type": "timeseries",
+   "title": "Threads / GC pause",
+   "gridPos": {
+    "x": 12,
+    "y": 20,
+    "w": 12,
+    "h": 8
+   },
+   "datasource": {
+    "type": "prometheus",
+    "uid": "dtm-prometheus"
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "sum(jvm_threads_live_threads)",
+     "datasource": {
+      "type": "prometheus",
+      "uid": "dtm-prometheus"
+     },
+     "legendFormat": "live threads"
+    },
+    {
+     "refId": "B",
+     "expr": "sum(rate(jvm_gc_pause_seconds_sum[1m])) * 1000",
+     "datasource": {
+      "type": "prometheus",
+      "uid": "dtm-prometheus"
+     },
+     "legendFormat": "GC pause ms per second"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "unit": "short"
+    },
+    "overrides": []
+   }
+  }
+ ]
+}

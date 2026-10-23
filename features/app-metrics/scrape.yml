@@ -1,0 +1,12 @@
+# GENERATED INPUT: scripts/up က .env အတိုင်း @@...@@ နေရာတွေကို ဖြည့်ပြီး .generated/prometheus/scrape.d/ ထဲ ထည့်ပေးတယ်
+# DTM backend (Spring Boot Actuator /actuator/prometheus) ကို ၁၅ စက္ကန့်တစ်ခါ သွားမေးမယ့် job
+scrape_configs:
+  - job_name: dtm-app
+    metrics_path: '@@APP_METRICS_PATH@@'
+    scheme: '@@APP_METRICS_SCHEME@@'
+@@APP_METRICS_AUTH@@
+    static_configs:
+      - targets: ['@@APP_METRICS_TARGET@@']
+        labels:
+          env: '@@MONITORING_ENV@@'
+          host: '@@MONITORING_HOST@@'

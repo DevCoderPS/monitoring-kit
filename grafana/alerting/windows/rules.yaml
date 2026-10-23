@@ -1,0 +1,277 @@
+# =====================================================================
+#  Alert rules (WINDOWS / windows_exporter ပုံစံ)  -  .env မှာ PLATFORM=windows ဆိုရင် သုံးမယ်
+#  ဘာဖြစ်ရင် email ပို့မလဲ။
+#  ဒီဖိုင်ထဲက rule တွေက Grafana UI ထဲမှာ ပြင်လို့မရဘူး (ဖိုင်ကနေပဲ ပြင်ရ)။
+#  ပြင်ပြီးရင် :  docker compose restart grafana
+#
+#  rule တစ်ခုချင်းစီရဲ့ ဖွဲ့စည်းပုံ :
+#     A = ဒေတာကို မေးတဲ့ query
+#     B = ရလဒ်ကို တစ်ခုတည်း (နောက်ဆုံးတန်ဖိုး) အဖြစ် ချုံ့
+#     C = ကန့်သတ်ချက် (threshold) နဲ့ နှိုင်းယှဉ် -> ကျော်ရင် Firing
+#     for = ကျော်ပြီး ဒီကာလကြာမှ တကယ် alert ပေး (ခဏပဲ ကျော်တာကို မသတိပေးဖို့)
+# =====================================================================
+apiVersion: 1
+groups:
+  - orgId: 1
+    name: monitoring
+    folder: Monitoring
+    interval: 1m
+    rules:
+      # ---- Backend ERROR logs
+      # နောက်ဆုံး ၅ မိနစ်အတွင်း level=ERROR log တစ်ကြောင်းမဆို ပေါ်ရင် email ပို့ (service အားလုံးအတွက်)
+      - uid: backend-error
+        title: Backend ERROR logs
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: dtm-loki
+            model:
+              refId: A
+              expr: 'sum(count_over_time({level="ERROR"}[5m])) or vector(0)'
+              intervalMs: 1000
+              maxDataPoints: 43200
+              queryType: instant
+              editorMode: code
+          - refId: B
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              refId: B
+              type: reduce
+              expression: A
+              reducer: last
+              settings:
+                mode: dropNN
+          - refId: C
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              refId: C
+              type: threshold
+              expression: B
+              conditions:
+                - evaluator:
+                    type: gt
+                    params: [0]
+        noDataState: OK
+        execErrState: Error
+        for: 0s
+        labels:
+          severity: critical
+        annotations:
+          summary: Application log ထဲမှာ ERROR ပေါ်နေတယ် (နောက်ဆုံး ၅ မိနစ်)
+
+      # ---- Host exporter down
+      # windows_exporter ကို ၂ မိနစ်ကျော် ချိတ်မရရင် email ပို့ (Linux သုံးရင် job="linux" လို့ ပြောင်း)
+      - uid: host-exporter-down
+        title: Host exporter down
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: dtm-prometheus
+            model:
+              refId: A
+              expr: 'up{job="windows"}'
+              intervalMs: 1000
+              maxDataPoints: 43200
+              instant: true
+              range: false
+              editorMode: code
+          - refId: B
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              refId: B
+              type: reduce
+              expression: A
+              reducer: last
+              settings:
+                mode: dropNN
+          - refId: C
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              refId: C
+              type: threshold
+              expression: B
+              conditions:
+                - evaluator:
+                    type: lt
+                    params: [1]
+        noDataState: Alerting
+        execErrState: Error
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: Host metrics ယူလို့မရတော့ဘူး (windows_exporter ရပ်နေနိုင်)
+
+      # ---- Disk usage above 90%
+      # Drive (C:, D: ...) တစ်ခုခု ၉၀% ကျော်ပြီး ၅ မိနစ်ကြာရင် email ပို့
+      - uid: disk-high
+        title: Disk usage above 90%
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: dtm-prometheus
+            model:
+              refId: A
+              expr: '100 * (1 - windows_logical_disk_free_bytes{volume=~"[A-Za-z]:"} / windows_logical_disk_size_bytes{volume=~"[A-Za-z]:"})'
+              intervalMs: 1000
+              maxDataPoints: 43200
+              instant: true
+              range: false
+              editorMode: code
+          - refId: B
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              refId: B
+              type: reduce
+              expression: A
+              reducer: last
+              settings:
+                mode: dropNN
+          - refId: C
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              refId: C
+              type: threshold
+              expression: B
+              conditions:
+                - evaluator:
+                    type: gt
+                    params: [90]
+        noDataState: OK
+        execErrState: Error
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: Disk ၉၀% ကျော်ပြည့်နေပြီ
+
+      # ---- Memory usage above 90%
+      # RAM ၉၀% ကျော်ပြီး ၅ မိနစ်ကြာရင် email ပို့
+      - uid: memory-high
+        title: Memory usage above 90%
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: dtm-prometheus
+            model:
+              refId: A
+              expr: '100 * (1 - windows_memory_available_bytes / windows_memory_physical_total_bytes)'
+              intervalMs: 1000
+              maxDataPoints: 43200
+              instant: true
+              range: false
+              editorMode: code
+          - refId: B
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              refId: B
+              type: reduce
+              expression: A
+              reducer: last
+              settings:
+                mode: dropNN
+          - refId: C
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              refId: C
+              type: threshold
+              expression: B
+              conditions:
+                - evaluator:
+                    type: gt
+                    params: [90]
+        noDataState: OK
+        execErrState: Error
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: RAM ၉၀% ကျော် သုံးနေတယ်
+
+      # ---- CPU usage above 90%
+      # CPU ၉၀% ကျော်ပြီး ၅ မိနစ်ကြာရင် email ပို့
+      - uid: cpu-high
+        title: CPU usage above 90%
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: dtm-prometheus
+            model:
+              refId: A
+              expr: '100 - (avg(rate(windows_cpu_time_total{mode="idle"}[5m])) * 100)'
+              intervalMs: 1000
+              maxDataPoints: 43200
+              instant: true
+              range: false
+              editorMode: code
+          - refId: B
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              refId: B
+              type: reduce
+              expression: A
+              reducer: last
+              settings:
+                mode: dropNN
+          - refId: C
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              refId: C
+              type: threshold
+              expression: B
+              conditions:
+                - evaluator:
+                    type: gt
+                    params: [90]
+        noDataState: OK
+        execErrState: Error
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: CPU ၉၀% ကျော် သုံးနေတယ်

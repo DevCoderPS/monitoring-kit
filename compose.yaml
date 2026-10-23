@@ -1,0 +1,225 @@
+# =====================================================================
+#  Monitoring Kit  (Grafana + Prometheus + Loki + Alloy)
+# =====================================================================
+#  စတင်ရန်   :  scripts\up.ps1 (Windows) / bash scripts/up.sh (Linux)
+#              (.env ထဲက *_ENABLE=true/false ကိုဖတ်ပြီး ဖွင့်ထားတဲ့ဟာတွေကိုပဲ တပ်ပေးတယ်။
+#               docker compose up -d ကို တိုက်ရိုက်မခေါ်ပါနဲ့ - .generated/ ဖိုင်တွေ မရှိရင် error ပေးမယ်)
+#  ရပ်ရန်     :  docker compose down        (data ကျန်ပါတယ်)
+#  data ပါ ဖျက်ရန် : docker compose down -v  (သတိ - dashboard/log အကုန်ပျောက်မယ်)
+#
+#  PLATFORM  (.env ထဲမှာ)  =  windows  သို့မဟုတ်  linux
+#     ကိုယ်ကြည့်မယ့် စက်ရဲ့ OS အလိုက် Prometheus config၊ Alert rule၊ Host dashboard ကို
+#     အလိုအလျောက် ရွေးပေးတယ်။ (log စုတာ၊ email ပို့တာကတော့ နှစ်ခုလုံး တူတူပဲ)
+#
+#  Service ၄ ခုက ဘာအတွက်လဲဆိုတာ README.md မှာ အသေးစိတ် ရှင်းထားပါတယ်။
+#  ဒီဖိုင်ထဲမှာ ဘာလို့ အဲဒီလို သတ်မှတ်ထားလဲဆိုတာ comment နဲ့ ရေးထားပါတယ်။
+# =====================================================================
+name: monitoring-kit
+
+services:
+
+  # ---------------------------------------------------------------
+  #  Prometheus  =  စက်ရဲ့ ကိန်းဂဏန်းတွေ (CPU, RAM, Disk, Network) ကို
+  #                 အချိန်အတိုင်းအတာနဲ့ ကောက်ယူသိမ်းတဲ့ database
+  # ---------------------------------------------------------------
+  prometheus:
+    image: prom/prometheus:v3.5.0          # version ကို ပုံသေ သတ်မှတ်ထား (ရုတ်တရက် မပြောင်းအောင်)
+    restart: unless-stopped                # computer ပြန်ဖွင့်ရင် အလိုအလျောက် ပြန်စ
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --storage.tsdb.retention.time=15d  # ဒေတာကို ၁၅ ရက်ပဲ သိမ်း (disk မပြည့်အောင်)
+    extra_hosts:
+      - "host.docker.internal:host-gateway" # container ထဲကနေ host စက်ကို host.docker.internal နဲ့ ခေါ်လို့ရအောင် (Windows/Mac/Linux အားလုံးမှာ)
+    volumes:
+      # PLATFORM အလိုက် config ရွေး (ro = ဖတ်ခွင့်ပဲ)
+      # create_host_path:false = PLATFORM မှားရိုက်ရင် ဖိုင်မရှိဘူးဆိုပြီး ချက်ချင်း error ပေး
+      - type: bind
+        source: ./prometheus/prometheus.${PLATFORM:-windows}.yml
+        target: /etc/prometheus/prometheus.yml
+        read_only: true
+        bind:
+          create_host_path: false
+      # optional job တွေ (APP_METRICS_ENABLE ...) - scripts/up က .env အတိုင်း ထုတ်ပေးတဲ့ folder
+      - type: bind
+        source: ./.generated/prometheus/scrape.d
+        target: /etc/prometheus/scrape.d
+        read_only: true
+        bind:
+          create_host_path: false
+      - prometheus_data:/prometheus        # ဒေတာကို volume ထဲသိမ်း (container ဖျက်လည်း မပျောက်)
+    networks: [monitoring]                 # အပြင်ကို port မဖွင့်ဘူး၊ network ထဲကပဲ ချိတ်လို့ရတယ်
+
+  # ---------------------------------------------------------------
+  #  Loki  =  Log (စာကြောင်း) တွေကို သိမ်းပြီး ရှာလို့ရတဲ့ database
+  # ---------------------------------------------------------------
+  loki:
+    image: grafana/loki:3.5.3
+    restart: unless-stopped
+    command:
+      - -config.file=/etc/loki/loki.yaml
+    volumes:
+      - ./loki/loki.yaml:/etc/loki/loki.yaml:ro
+      - loki_data:/loki
+    networks: [monitoring]
+
+  # ---------------------------------------------------------------
+  #  Alloy  =  Log ဖိုင်တွေကို ဖတ်ပြီး Loki ဆီ ပို့ပေးတဲ့ စုဆောင်းသူ
+  # ---------------------------------------------------------------
+  alloy:
+    image: grafana/alloy:v1.10.2
+    restart: unless-stopped
+    command:
+      - run
+      - --storage.path=/var/lib/alloy/data   # ဘယ်အထိ ဖတ်ပြီးပြီလဲ မှတ်ထားတဲ့ နေရာ
+      - --server.http.listen-addr=0.0.0.0:12345
+      - /etc/alloy/config.alloy
+    environment:
+      MONITORING_ENV: ${MONITORING_ENV:-dev}          # log တိုင်းမှာ env=dev စသဖြင့် တပ်ပေး
+      MONITORING_HOST: ${MONITORING_HOST:-my-pc}      # log တိုင်းမှာ host=... တပ်ပေး
+    volumes:
+      - ./alloy/config.alloy:/etc/alloy/config.alloy:ro
+      - ${LOG_DIR:-./logs}:/var/log/app:ro  # သင့် app ရဲ့ log folder ကို ဖတ်ခွင့်သာနဲ့ ချိတ်
+      - alloy_data:/var/lib/alloy/data
+    depends_on: [loki]
+    networks: [monitoring]
+
+  # ---------------------------------------------------------------
+  #  Grafana  =  ကြည့်ရတဲ့ မျက်နှာပြင် (Dashboard, Log ရှာ, Alert email)
+  # ---------------------------------------------------------------
+  grafana:
+    image: grafana/grafana:12.1.1
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:${GRAFANA_PORT:-3000}:3000"   # 127.0.0.1 = ကိုယ့်စက်ကပဲ ဝင်လို့ရ (LAN ကို မဖွင့်)
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:?.env ထဲမှာ GRAFANA_ADMIN_PASSWORD ကို ဖြည့်ပါ}
+      GF_USERS_ALLOW_SIGN_UP: "false"            # လူတိုင်း account မဖွင့်နိုင်အောင်
+      GF_AUTH_ANONYMOUS_ENABLED: "false"         # login မဝင်ဘဲ မကြည့်နိုင်အောင်
+      # --- Email (alert ပို့ဖို့) ---
+      GF_SMTP_ENABLED: ${SMTP_ENABLED:-true}
+      GF_SMTP_HOST: ${SMTP_HOST:-smtp.gmail.com:587}
+      # (EMAIL_ALERT_ENABLE=true ဆိုရင် up script က SMTP_* ဖြည့်ထားလားစစ်ပေးတယ်)
+      GF_SMTP_USER: ${SMTP_USER:-}
+      GF_SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      GF_SMTP_FROM_ADDRESS: ${SMTP_FROM:-}
+      GF_SMTP_FROM_NAME: ${SMTP_FROM_NAME:-Monitoring}
+      GF_SMTP_STARTTLS_POLICY: MandatoryStartTLS
+      # --- alert လက်ခံမယ့် email (provisioning ဖိုင်က ဒီတန်ဖိုးကို သုံးတယ်) ---
+      ALERT_EMAIL: ${ALERT_EMAIL:-}
+      # --- Telegram (TELEGRAM_ALERT_ENABLE=true ဆိုမှ လိုတယ်၊ provisioning ဖိုင်က ဒီတန်ဖိုးတွေကို သုံးတယ်) ---
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
+      TELEGRAM_CHAT_ID: ${TELEGRAM_CHAT_ID:-}
+    volumes:
+      - grafana_data:/var/lib/grafana
+      # --- အလိုအလျောက် သတ်မှတ်ပေးမယ့် ဖိုင်များ (provisioning) ---
+      - ./grafana/provisioning/datasources:/etc/grafana/provisioning/datasources:ro   # Prometheus/Loki ချိတ်
+      - ./grafana/provisioning/dashboards:/etc/grafana/provisioning/dashboards:ro     # dashboard ဖိုင်တွေကို ဖွင့်ပေးမယ့် setting
+      # --- up script က .env ရဲ့ *_ENABLE အတိုင်း ထုတ်ပေးတဲ့ဖိုင်များ (.generated/) ---
+      - type: bind
+        source: ./.generated/alerting/contact-points.yaml   # ဖွင့်ထားတဲ့ channel (email...) ပဲ ပါမယ်
+        target: /etc/grafana/provisioning/alerting/contact-points.yaml
+        read_only: true
+        bind:
+          create_host_path: false
+      - type: bind
+        source: ./.generated/alerting/policies.yaml         # ဘယ်လိုစုပို့မလဲ + ဘယ် channel ကိုပို့မလဲ
+        target: /etc/grafana/provisioning/alerting/policies.yaml
+        read_only: true
+        bind:
+          create_host_path: false
+      - type: bind
+        source: ./.generated/alerting/templates.yaml        # Alert စာပုံစံ (ALERT_TEMPLATE_ENABLE)
+        target: /etc/grafana/provisioning/alerting/templates.yaml
+        read_only: true
+        bind:
+          create_host_path: false
+      # --- PLATFORM အလိုက် ရွေးတဲ့ဖိုင်များ ---
+      - type: bind
+        source: ./grafana/alerting/${PLATFORM:-windows}/rules.yaml
+        target: /etc/grafana/provisioning/alerting/rules.yaml
+        read_only: true
+        bind:
+          create_host_path: false
+      - type: bind
+        source: ./grafana/dashboards/${PLATFORM:-windows}
+        target: /var/lib/grafana/dashboards/host
+        read_only: true
+        bind:
+          create_host_path: false
+      # --- OS မရွေး အတူတူသုံးတဲ့ dashboard (Application Logs) ---
+      - ./grafana/dashboards/common:/var/lib/grafana/dashboards/common:ro
+      # --- optional feature (APP_METRICS_ENABLE) - scripts/up က .env အတိုင်း ထုတ်ပေးတဲ့ဖိုင်များ ---
+      - type: bind
+        source: ./.generated/dashboards/app
+        target: /var/lib/grafana/dashboards/app
+        read_only: true
+        bind:
+          create_host_path: false
+      - type: bind
+        source: ./.generated/alerting/rules-app.yaml
+        target: /etc/grafana/provisioning/alerting/rules-app.yaml
+        read_only: true
+        bind:
+          create_host_path: false
+      - type: bind
+        source: ./.generated/alerting/rules-postgres.yaml
+        target: /etc/grafana/provisioning/alerting/rules-postgres.yaml
+        read_only: true
+        bind:
+          create_host_path: false
+      - type: bind
+        source: ./.generated/alerting/rules-uptime.yaml
+        target: /etc/grafana/provisioning/alerting/rules-uptime.yaml
+        read_only: true
+        bind:
+          create_host_path: false
+    depends_on: [prometheus, loki]
+    networks: [monitoring]
+
+  # ---------------------------------------------------------------
+  #  Postgres exporter  =  Postgres ကို ချိတ်ပြီး ကိန်းဂဏန်း (connection, size, deadlock ...) ထုတ်ပေးတာ
+  #                        POSTGRES_ENABLE=true ဆိုမှ scripts/up က ဖွင့်ပေးတယ် (profile: postgres)
+  # ---------------------------------------------------------------
+  postgres-exporter:
+    image: quay.io/prometheuscommunity/postgres-exporter:v0.17.1
+    profiles: [postgres]
+    restart: unless-stopped
+    environment:
+      DATA_SOURCE_URI: ${POSTGRES_HOST:-host.docker.internal}:${POSTGRES_PORT:-5432}/${POSTGRES_DB:-postgres}?sslmode=${POSTGRES_SSLMODE:-disable}
+      DATA_SOURCE_USER: ${POSTGRES_USER:-}
+      DATA_SOURCE_PASS: ${POSTGRES_PASSWORD:-}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks: [monitoring]                 # အပြင်ကို port မဖွင့်ဘူး၊ Prometheus ကပဲ network ထဲကနေ ခေါ်တယ်
+
+  # ---------------------------------------------------------------
+  #  Blackbox exporter  =  URL တွေကို အပြင်ကနေ တကယ်ခေါ်ကြည့်ပြီး UP/DOWN၊ မြန်နှုန်း၊ certificate စစ်တာ
+  #                        UPTIME_ENABLE=true ဆိုမှ scripts/up က ဖွင့်ပေးတယ် (profile: uptime)
+  # ---------------------------------------------------------------
+  blackbox-exporter:
+    image: prom/blackbox-exporter:v0.27.0
+    profiles: [uptime]
+    restart: unless-stopped
+    command:
+      - --config.file=/etc/blackbox/blackbox.yml
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - type: bind
+        source: ./features/uptime/blackbox.yml
+        target: /etc/blackbox/blackbox.yml
+        read_only: true
+        bind:
+          create_host_path: false
+    networks: [monitoring]                 # အပြင်ကို port မဖွင့်ဘူး
+
+networks:
+  monitoring:
+
+volumes:
+  prometheus_data:
+  loki_data:
+  alloy_data:
+  grafana_data:

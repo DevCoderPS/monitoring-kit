@@ -1,0 +1,48 @@
+# =====================================================================
+#  Alert စာပုံစံ (Message template)  -  Telegram နဲ့ Email ကို ပို့တဲ့စာ ဘယ်လိုပုံစံ ဖြစ်မလဲ
+#
+#  ဒီဖိုင်ကိုပြင် -> scripts\up ပြန် run (Grafana ကို အလိုအလျောက် restart လုပ်ပေးမယ်)
+#  မပြင်ချင်ရင် / Grafana ရဲ့ မူလပုံစံ သုံးချင်ရင် .env မှာ  ALERT_TEMPLATE_ENABLE=false
+#  အချိန်ဇုန်ကို .env ထဲ  ALERT_TIMEZONE  မှာ ပြောင်း (မူလ Asia/Yangon)
+#
+#  ပြင်ရာမှာ သတိထားရန်:
+#   - {{ ... }} ထဲက အပိုင်းတွေက ဒေတာနေရာ (alert နာမည်၊ summary ...)။ ဘေးက စာ၊ emoji တွေကို ကြိုက်သလိုပြင်လို့ရတယ်
+#   - dollar sign ($) ကို ဒီဖိုင်ထဲ မသုံးပါနဲ့ (Grafana က env variable လို့ မှတ်သွားမယ်)
+#   - Telegram က HTML mode: <b>စာ</b> = bold။ < နဲ့ & ပါတဲ့ ဒေတာကို  {{ template "dtm.esc" ... }} နဲ့ ဖြတ်ပေးရတယ်
+#   - ဘာတွေ ထည့်လို့ရလဲ: .Labels.alertname  .Labels.instance  .Labels.env  .Annotations.summary
+#                          .Status (firing/resolved)  .StartsAt  .EndsAt
+#   - စမ်းကြည့်ချင်ရင် Grafana > Alerting > Contact points > (Telegram/Email) > Test ခလုတ်
+# =====================================================================
+apiVersion: 1
+templates:
+  - orgId: 1
+    name: dtm-templates
+    template: |
+      {{ define "dtm.esc" }}{{ . | reReplaceAll "&" "&amp;" | reReplaceAll "<" "&lt;" }}{{ end }}
+
+      {{ define "dtm.telegram" -}}
+      {{ range .Alerts -}}
+      {{ if eq .Status "firing" }}🔴 <b>ပြဿနာ ဖြစ်နေတယ်</b>{{ else }}🟢 <b>ပြန်ကောင်းသွားပြီ</b>{{ end }}
+      <b>{{ template "dtm.esc" .Labels.alertname }}</b>
+      {{ with .Annotations.summary }}{{ template "dtm.esc" . }}
+      {{ end -}}
+      {{ with .Labels.env }}🌐 {{ template "dtm.esc" . }}  {{ end }}{{ with .Labels.instance }}📍 {{ template "dtm.esc" . }}{{ end }}
+      🕒 {{ .StartsAt | tz "@@ALERT_TIMEZONE@@" | date "2006-01-02 15:04:05" }}
+
+      {{ end -}}
+      {{ end }}
+
+      {{ define "dtm.email.subject" -}}
+      {{ if eq .Status "firing" }}🔴 ပြဿနာ{{ else }}🟢 ပြန်ကောင်း{{ end }}: {{ with .CommonLabels.alertname }}{{ . }}{{ else }}{{ len .Alerts }} alerts{{ end }}
+      {{- end }}
+
+      {{ define "dtm.email.message" -}}
+      {{ range .Alerts -}}
+      {{ if eq .Status "firing" }}[ပြဿနာ ဖြစ်နေတယ်]{{ else }}[ပြန်ကောင်းသွားပြီ]{{ end }} {{ .Labels.alertname }}
+      {{ with .Annotations.summary }}{{ . }}
+      {{ end -}}
+      {{ with .Labels.env }}env: {{ . }}   {{ end }}{{ with .Labels.instance }}target: {{ . }}{{ end }}
+      အချိန်: {{ .StartsAt | tz "@@ALERT_TIMEZONE@@" | date "2006-01-02 15:04:05" }}
+
+      {{ end -}}
+      {{ end }}

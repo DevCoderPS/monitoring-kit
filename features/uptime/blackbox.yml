@@ -1,0 +1,11 @@
+# blackbox-exporter config: URL တစ်ခုကို ဘယ်လို စစ်မလဲ
+modules:
+  http_2xx:
+    prober: http
+    timeout: 10s              # ၁၀ စက္ကန့်အတွင်း မဖြေရင် DOWN
+    http:
+      method: GET
+      follow_redirects: true
+      valid_status_codes: []  # ဗလာ = 2xx ကိုပဲ OK လို့ သတ်မှတ်
+      preferred_ip_protocol: ip4
+      ip_protocol_fallback: true
